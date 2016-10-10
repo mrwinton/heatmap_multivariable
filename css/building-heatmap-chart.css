@@ -1,0 +1,100 @@
+text{
+  fill: #7d7d7d;
+}
+
+.timeLabel, .dayLabel {
+  font-size: 1.6rem;
+  fill: #AAAAAA;
+  font-weight: 300;
+}
+
+text.axis-workweek, text.axis-worktime {
+  fill: #404040;
+  font-weight: 400;
+}
+
+.title {
+  font-size: 2.8rem;
+  fill: #4F4F4F;
+  font-weight: 300;
+}
+
+.subtitle {
+  font-size: 1.4rem;
+  fill: #AAAAAA;
+  font-weight: 300;
+}
+
+.credit {
+  font-size: 1.2rem;
+  fill: #AAAAAA;
+  font-weight: 400;
+}
+
+.axis path, .axis tick, .axis line {
+  fill: none;
+  stroke: none;
+}
+
+text {
+  fill: #AAAAAA;
+  font-weight: 400;
+}
+
+.legendTitle {
+  font-size: 1.6rem;
+  fill: #4F4F4F;
+  font-weight: 300;
+}
+
+
+/*COMMON*/
+
+.locator{
+  fill: #fff;
+  stroke: #91B8E7;
+  stroke-width: 1.8;
+}
+
+.reading-tooltip{
+  position: absolute;
+  pointer-events: none;
+  width: 140px;
+  font-weight: bold;
+  font-size: 1.3em;
+  z-index: 1000;
+  font-family: 'Lato', Arial, sans-serif;
+  text-shadow: -1px -1px 0 #f8f3f3, 1px -1px 0 #f8f3f3, -1px 1px 0 #f8f3f3, 1px 1px 0 #f8f3f3;
+}
+
+.reading-tooltip .key{
+  color: #3A4A4D;
+}
+
+.reading-tooltip .value{
+  color: #91B8E7;
+}
+
+.tooltipAnimated {
+  -webkit-animation-duration: 0.8s;
+  animation-duration: 0.8s;
+  -webkit-animation-fill-mode: both;
+  animation-fill-mode: both;
+}
+
+@-webkit-keyframes tooltipFadeIn {
+  0%   {opacity: 0;}
+  50%  {opacity: 0;}
+  100% {opacity: 1;}
+}
+
+@keyframes tooltipFadeIn {
+  0%   {opacity: 0;}
+  50%  {opacity: 0;}
+  100% {opacity: 1;}
+}
+
+.tooltipFadeIn {
+  -webkit-animation-name: tooltipFadeIn;
+  animation-name: tooltipFadeIn;
+}
