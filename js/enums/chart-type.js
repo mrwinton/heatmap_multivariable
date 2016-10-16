@@ -1,14 +1,18 @@
 var CHART_TYPE = {
     TEMPERATURE: {
-        suffix: "°C"
+        suffix: "°C",
+        name: "temperature"
     },
     RELATIVE_HUMIDITY: {
-        suffix: "%"
+        suffix: "%",
+        name: "relative humidity"
     },
     DEW_POINT: {
-        suffix: "°C"
+        suffix: "°C",
+        name: "dew point"
     },
     EQUILIBRIUM_MOISTURE_CONTENT: {
-        suffix: "%"
+        suffix: "%",
+        name: "equilibrium moisture content"
     }
 };
