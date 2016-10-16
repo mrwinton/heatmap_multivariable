@@ -1,3 +1,8 @@
+body {
+  fill: #8C8C8C;
+  text-align: center;
+}
+
 text{
   fill: #7d7d7d;
 }
@@ -42,9 +47,8 @@ text {
 }
 
 .legendTitle {
-  font-size: 1.6rem;
+  font-size: 1.4rem;
   fill: #4F4F4F;
-  font-weight: 300;
 }
 
 
