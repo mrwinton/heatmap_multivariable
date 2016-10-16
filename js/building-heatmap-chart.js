@@ -9,44 +9,49 @@ function BuildingHeatmapChart(element) {
 
   //data
   this.data = null;
-  this.tagTemperatureReadings = [];
-  this.tagRelativeHumidityReadings = [];
-  this.tagDewPointReadings = [];
+  this.tagTemperatureReadings       = [];
+  this.tagRelativeHumidityReadings  = [];
+  this.tagDewPointReadings          = [];
   this.tagEquilibriumMoistureContentReadings = [];
 
   this.defaultTemperatureDomain      = [-10, 40];
   this.defaultRelativeHumidityDomain = [0, 100];
   this.defaultDewPointDomain         = [-10, 40];
-  this.defaultEquilibriumMoistureContentDomain = [0, 100];
+  this.defaultEquilibriumMoistureContentDomain = [10, 20];
 
   this.selectedReadings = [];
   this.selectedType     = null;
   this.selectedTypeDefaultDomain   = [];
 
   //base graph
-  this.container = null;
-  this.svg = null;
-  this.chart = null;
-  this.margin = {};
-  this.width = null;
-  this.height = null;
-  this.gridSize = null;
+  this.container  = null;
+  this.svg        = null;
+  this.chart      = null;
+  this.area       = null;
+  this.clip       = null;
+  this.margin     = {};
+  this.width      = null;
+  this.height     = null;
+  this.gridSize   = null;
+
+  this.timeLabelArea  = null;
+  this.dayLabelArea   = null;
 
   //time formats
-  this.timeFormat = d3.time.format('%Y-%m-%d %H:%M:%S');
+  this.timeFormat     = d3.time.format('%Y-%m-%d %H:%M:%S');
   this.niceTimeFormat = d3.time.format('%a %e, %b %_I:%M%p');
-  this.hourFormat = d3.time.format('%H');
-  this.dayFormat = d3.time.format('%e');
+  this.hourFormat     = d3.time.format('%H');
+  this.dayFormat      = d3.time.format('%e');
 
-  this.days = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
-  this.times = d3.range(24);
+  this.days   = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
+  this.times  = d3.range(24);
 
   //heatmap
   this.colorScale = null;
-  this.dayLabels = null;
-  this.stops = null;
-  this.xScale = null;
-  this.xAxis = null;
+  this.dayLabels  = null;
+  this.stops      = null;
+  this.xScale     = null;
+  this.xAxis      = null;
   this.countScale = null;
 
   //misc
@@ -59,43 +64,45 @@ BuildingHeatmapChart.prototype.initData = function (data) {
   this.data = data;
 
   this.data.tagLogs.forEach(function (tagLog) {
+    var reading_date = self.timeFormat.parse(tagLog.readingAt);
+
     self.tagTemperatureReadings.push(
       {
-        date: self.timeFormat.parse(tagLog.readingAt),
-        day: self.dayFormat.parse(tagLog.readingAt),
-        hour: self.hourFormat.parse(tagLog.readingAt),
+        date: reading_date,
+        day: self.dayFormat(reading_date),
+        hour: self.hourFormat(reading_date),
         y: tagLog.temperature
       });
 
     self.tagRelativeHumidityReadings.push({
-        date: self.timeFormat.parse(tagLog.readingAt),
-        day: self.dayFormat.parse(tagLog.readingAt),
-        hour: self.hourFormat.parse(tagLog.readingAt),
+        date: reading_date,
+        day: self.dayFormat(reading_date),
+        hour: self.hourFormat(reading_date),
         y: tagLog.relativeHumidity
       });
 
     self.tagDewPointReadings.push(
       {
-        date: self.timeFormat.parse(tagLog.readingAt),
-        day: self.dayFormat.parse(tagLog.readingAt),
-        hour: self.hourFormat.parse(tagLog.readingAt),
+        date: reading_date,
+        day: self.dayFormat(reading_date),
+        hour: self.hourFormat(reading_date),
         y: tagLog.dewPoint
       });
 
     self.tagEquilibriumMoistureContentReadings.push(
       {
-        date: self.timeFormat.parse(tagLog.readingAt),
-        day: self.dayFormat.parse(tagLog.readingAt),
-        hour: self.hourFormat.parse(tagLog.readingAt),
+        date: reading_date,
+        day: self.dayFormat(reading_date),
+        hour: self.hourFormat(reading_date),
         y: tagLog.equilibriumMoistureContent
       });
   });
 
   this.colorScale = d3.scale.linear().range(["#FFFFDD", "#3E9583", "#1F2D86"])
 
-  this.xScale = d3.scale.linear();
+  this.xScale     = d3.scale.linear();
   this.countScale = d3.scale.linear();
-  this.xAxis = d3.svg.axis();
+  this.xAxis      = d3.svg.axis();
 
   this._selectDataType(CHART_TYPE.EQUILIBRIUM_MOISTURE_CONTENT);
 };
@@ -105,15 +112,28 @@ BuildingHeatmapChart.prototype.initChart = function () {
   this.svg = this.container.append('svg');
   this.chart = this.svg.append('g');
 
-  this.dayLabels = this.chart.selectAll(".dayLabel")
+  this.dayLabelArea = this.chart.append('g')
+    .attr('id', 'day-label-area');
+
+  this.timeLabelArea = this.chart.append('g')
+    .attr('id', 'day-label-area');
+
+  this.dayLabels = this.dayLabelArea.selectAll(".dayLabel")
   .data(this.days)
   .enter().append("text");
 
-  this.timeLabels = this.chart.selectAll(".timeLabel")
+  this.timeLabels = this.timeLabelArea.selectAll(".timeLabel")
   .data(this.times)
   .enter().append("text");
 
-  this.heatMap = this.chart.selectAll(".hour")
+  this.area = this.chart.append('g')
+    .attr('clip-path', 'url(#areaClip)');
+
+  this.clip = this.area.append('clipPath')
+    .attr('id', 'areaClip')
+    .append('rect');
+
+  this.heatMap = this.area.selectAll(".hour")
   .data(this.selectedReadings)
   .enter().append("rect");
 
@@ -162,6 +182,15 @@ BuildingHeatmapChart.prototype.render = function (event) {
     countPoint.push(i * countRange[2]/(numStops-1) + countRange[0]);
   }//for i
 
+  //update svg elements to new dimensions
+  this.svg.attr('width', this.width + this.margin.left + this.margin.right)
+      .attr('height', this.height + this.margin.top + this.margin.bottom);
+  this.chart.attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
+  this.clip.attr({
+    width: this.width + 5,
+    height: this.days.length * this.gridSize
+  });
+
   this.dayLabels
     .text(function (d) { return d; })
     .attr("x", 0)
@@ -179,8 +208,12 @@ BuildingHeatmapChart.prototype.render = function (event) {
     .attr("class", function(d, i) { return ((i >= 8 && i <= 17) ? "timeLabel mono axis axis-worktime" : "timeLabel mono axis"); });
 
   this.heatMap
-    .attr("x", function(d) { return (d.hour - 1) * self.gridSize; })
-    .attr("y", function(d) { return (d.day - 1) * self.gridSize; })
+    .attr("x", function(d) {
+      return (d.hour) * self.gridSize;
+    })
+    .attr("y", function(d) {
+      return (d.day - 1) * self.gridSize;
+    })
     .attr("class", "hour bordered")
     .attr("width", self.gridSize)
     .attr("height", self.gridSize)
@@ -203,7 +236,7 @@ BuildingHeatmapChart.prototype.render = function (event) {
   var legendWidth = newWidth*0.8;
 
   this.legendWrapper
-    .attr("transform", "translate(" + (newWidth/2) + "," + (this.gridSize * this.days.length + 40) + ")");
+    .attr("transform", "translate(" + (newWidth/2) + "," + (this.gridSize * this.days.length + 50) + ")");
 
   this.legend
     .attr("x", -legendWidth/2)
@@ -216,7 +249,7 @@ BuildingHeatmapChart.prototype.render = function (event) {
     .attr("x", 0)
     .attr("y", -10)
     .style("text-anchor", "middle")
-    .text("Number of Accidents");
+    .text(this.selectedType.name);
 
   this.xScale
     .range([-legendWidth/2, legendWidth/2])
@@ -225,7 +258,10 @@ BuildingHeatmapChart.prototype.render = function (event) {
   this.xAxis
     .orient("bottom")
     .ticks(5)
-    .scale(this.xScale);
+    .scale(this.xScale)
+    .tickFormat(function (d) {
+        return d + self.selectedType.suffix;
+    });
 
   this.xAxisElement.call(this.xAxis);
 };
