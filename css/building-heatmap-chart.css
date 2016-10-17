@@ -7,6 +7,16 @@ text{
   fill: #7d7d7d;
 }
 
+rect.hour {
+    stroke: white;
+    stroke-opacity: 0.6;
+}
+
+rect.cell-hover {
+    stroke: #8C8C8C;
+    stroke-opacity: 1;
+}
+
 .timeLabel, .dayLabel {
   font-size: 1.6rem;
   fill: #AAAAAA;

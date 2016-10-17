@@ -56,7 +56,9 @@ function BuildingHeatmapChart(element) {
 
   //misc
   this.breakPoint = 320;
-
+  this.tooltip    = null;
+  this.tooltipKey = null;
+  this.tooltipValue = null;
 }
 
 BuildingHeatmapChart.prototype.initData = function (data) {
@@ -98,7 +100,7 @@ BuildingHeatmapChart.prototype.initData = function (data) {
       });
   });
 
-  this.colorScale = d3.scale.linear().range(["#FFFFDD", "#3E9583", "#1F2D86"])
+  this.colorScale = d3.scale.linear().range(["#FFFFDD", "#3E9583", "#1F2D86"]);
 
   this.xScale     = d3.scale.linear();
   this.countScale = d3.scale.linear();
@@ -155,6 +157,15 @@ BuildingHeatmapChart.prototype.initChart = function () {
   this.xAxisElement = this.legendWrapper.append("g")
   .attr("class", "axis")
   .attr("transform", "translate(0," + (10) + ")");
+
+  this.tooltip = this.container.append('div')
+  .attr("class", "reading-tooltip");
+
+  this.tooltipKey = this.tooltip.append('div')
+  .attr("class", "key");
+
+  this.tooltipValue = this.tooltip.append('div')
+  .attr("class", "value");
 };
 
 BuildingHeatmapChart.prototype.render = function (event) {
@@ -215,11 +226,19 @@ BuildingHeatmapChart.prototype.render = function (event) {
       return (d.day - 1) * self.gridSize;
     })
     .attr("class", "hour bordered")
-    .attr("width", self.gridSize)
-    .attr("height", self.gridSize)
-    .style("stroke", "white")
-    .style("stroke-opacity", 0.6)
-    .style("fill", function(d) { return self.colorScale(d.y); });
+    .attr("width", self.gridSize - 1)
+    .attr("height", self.gridSize - 1)
+    .style("fill", function(d) { return self.colorScale(d.y); })
+    .on("mouseenter", function(){ self._selectCell(this); })
+    .on("mouseover", function (d) { self._moveTooltip(this, d); })
+    .on("mouseout", function(){ self._deselectCell(this); });
+
+  this.chart.on("mouseout", function () {
+        self._hideTooltip();
+    })
+    .on("mouseenter", function () {
+        self._showTooltip();
+    });
 
   // TODO remove previous data?
   this.stops = this.gradient.selectAll("stop")
@@ -306,4 +325,47 @@ BuildingHeatmapChart.prototype._selectDataType = function (dataType) {
   }
 
   this.selectedType = dataType;
+};
+
+BuildingHeatmapChart.prototype._showTooltip = function () {
+  this.tooltip.attr('class', 'reading-tooltip tooltipAnimated tooltipFadeIn');
+};
+
+BuildingHeatmapChart.prototype._moveTooltip = function (event, d) {
+  console.log("event: " + event);
+  console.log("d: " + d);
+
+  this.tooltipKey.html(this.niceTimeFormat(d.date));
+  this.tooltipValue.html(d.y + this.selectedType.suffix);
+
+  var coords = d3.mouse(this.chart.node());
+
+  //get dimensions of tooltip element
+  var dim = this.tooltip.node().getBoundingClientRect();
+
+  //update the position of the tooltip
+  var tooltipTop = (d.day - 1) * this.gridSize + (dim.height / 2),
+      tooltipLeft = (d.hour * this.gridSize) + (dim.width / 2);
+
+  //if right edge of tooltip goes beyond chart container, force it to move to the left of the mouse cursor
+  if (tooltipLeft + (dim.width / 2) > this.width) {
+    tooltipLeft = coords[0] - (dim.width / 2);
+  }
+
+  this.tooltip.transition().duration(200).style({
+    top: tooltipTop + 'px',
+    left: tooltipLeft + 'px'
+  });
+};
+
+BuildingHeatmapChart.prototype._hideTooltip = function () {
+  this.tooltip.transition().duration(500).style('opacity', 0.0).attr('class', 'reading-tooltip');
+};
+
+BuildingHeatmapChart.prototype._selectCell = function (cell) {
+  d3.select(cell).classed("cell-hover", true);
+};
+
+BuildingHeatmapChart.prototype._deselectCell = function (cell) {
+  d3.select(cell).classed("cell-hover", false);
 };
