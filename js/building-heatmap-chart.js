@@ -17,7 +17,7 @@ function BuildingHeatmapChart(element) {
   this.defaultTemperatureDomain      = [-10, 40];
   this.defaultRelativeHumidityDomain = [0, 100];
   this.defaultDewPointDomain         = [-10, 40];
-  this.defaultEquilibriumMoistureContentDomain = [10, 20];
+  this.defaultEquilibriumMoistureContentDomain = [15, 20];
 
   this.selectedReadings = [];
   this.selectedType     = null;
@@ -48,6 +48,7 @@ function BuildingHeatmapChart(element) {
 
   //heatmap
   this.colorScale = null;
+  this.colorRange = ["#91cf60", "#ffffbf", "#fc8d59"]
   this.dayLabels  = null;
   this.stops      = null;
   this.xScale     = null;
@@ -100,7 +101,7 @@ BuildingHeatmapChart.prototype.initData = function (data) {
       });
   });
 
-  this.colorScale = d3.scale.linear().range(["#FFFFDD", "#3E9583", "#1F2D86"]);
+  this.colorScale = d3.scale.linear().range(this.colorRange);
 
   this.xScale     = d3.scale.linear();
   this.countScale = d3.scale.linear();
@@ -174,11 +175,16 @@ BuildingHeatmapChart.prototype.render = function (event) {
   var newWidth = $(this.element).width();
   this._updateDimensions(newWidth);
 
-  // TODO should incorporate the min and max of the readings
+  var difference = this.selectedTypeDefaultDomain[1] - this.selectedTypeDefaultDomain[0];
+  var unit = difference / (this.colorRange.length - 1);
+  var colorDomain = this.colorRange.map(function(color, index) {
+    return self.selectedTypeDefaultDomain[0] + (unit * index);
+  });
+
+  this.colorScale.domain(colorDomain).clamp(true);
+
   var readingValuesExtent = d3.extent(this.selectedReadings, function(d) {return d.y; });
-  // var colorDomain = [0, maxValue/2, maxValue];
   var readingDomain = d3.extent(this.selectedTypeDefaultDomain.concat(readingValuesExtent));
-  this.colorScale.domain(readingDomain);
 
   this.countScale
     .domain(readingDomain)
@@ -332,9 +338,6 @@ BuildingHeatmapChart.prototype._showTooltip = function () {
 };
 
 BuildingHeatmapChart.prototype._moveTooltip = function (event, d) {
-  console.log("event: " + event);
-  console.log("d: " + d);
-
   this.tooltipKey.html(this.niceTimeFormat(d.date));
   this.tooltipValue.html(d.y + this.selectedType.suffix);
 
