@@ -42,13 +42,14 @@ function BuildingHeatmapChart(element) {
   this.niceTimeFormat = d3.time.format('%a %e, %b %_I:%M%p');
   this.hourFormat     = d3.time.format('%H');
   this.dayFormat      = d3.time.format('%e');
+  this.niceDayFormat  = d3.time.format('%a');
 
   this.days   = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
   this.times  = d3.range(24);
 
   //heatmap
   this.colorScale = null;
-  this.colorRange = ["#91cf60", "#ffffbf", "#fc8d59"]
+  this.colorRange = ["#91cf60", "#ffffbf", "#fc8d59"];
   this.dayLabels  = null;
   this.stops      = null;
   this.xScale     = null;
@@ -73,6 +74,7 @@ BuildingHeatmapChart.prototype.initData = function (data) {
       {
         date: reading_date,
         day: self.dayFormat(reading_date),
+        day_abbr: self.niceDayFormat(reading_date),
         hour: self.hourFormat(reading_date),
         y: tagLog.temperature
       });
@@ -80,6 +82,7 @@ BuildingHeatmapChart.prototype.initData = function (data) {
     self.tagRelativeHumidityReadings.push({
         date: reading_date,
         day: self.dayFormat(reading_date),
+        day_abbr: self.niceDayFormat(reading_date),
         hour: self.hourFormat(reading_date),
         y: tagLog.relativeHumidity
       });
@@ -88,6 +91,7 @@ BuildingHeatmapChart.prototype.initData = function (data) {
       {
         date: reading_date,
         day: self.dayFormat(reading_date),
+        day_abbr: self.niceDayFormat(reading_date),
         hour: self.hourFormat(reading_date),
         y: tagLog.dewPoint
       });
@@ -96,6 +100,7 @@ BuildingHeatmapChart.prototype.initData = function (data) {
       {
         date: reading_date,
         day: self.dayFormat(reading_date),
+        day_abbr: self.niceDayFormat(reading_date),
         hour: self.hourFormat(reading_date),
         y: tagLog.equilibriumMoistureContent
       });
@@ -208,13 +213,13 @@ BuildingHeatmapChart.prototype.render = function (event) {
     height: this.days.length * this.gridSize
   });
 
-  this.dayLabels
-    .text(function (d) { return d; })
-    .attr("x", 0)
-    .attr("y", function (d, i) { return i * self.gridSize; })
-    .style("text-anchor", "end")
-    .attr("transform", "translate(-6," + self.gridSize / 1.5 + ")")
-    .attr("class", function (d, i) { return ((i >= 0 && i <= 4) ? "dayLabel mono axis axis-workweek" : "dayLabel mono axis"); });
+  // this.dayLabels
+  //   .text(function (d) { return d; })
+  //   .attr("x", 0)
+  //   .attr("y", function (d, i) { return i * self.gridSize; })
+  //   .style("text-anchor", "end")
+  //   .attr("transform", "translate(-6," + self.gridSize / 1.5 + ")")
+  //   .attr("class", function (d, i) { return ((i >= 0 && i <= 4) ? "dayLabel mono axis axis-workweek" : "dayLabel mono axis"); });
 
   this.timeLabels
     .text(function(d) { return d; })
@@ -231,13 +236,22 @@ BuildingHeatmapChart.prototype.render = function (event) {
     .attr("y", function(d) {
       return (d.day - 1) * self.gridSize;
     })
-    .attr("class", "hour bordered")
+    .attr("class", function(d) {
+      return d.hour * self.gridSize == 0 ? "hour bordered new-day" : "hour bordered";
+    })
+    .attr("data-day", function(d) {
+      return d.day_abbr;
+    })
     .attr("width", self.gridSize - 1)
     .attr("height", self.gridSize - 1)
     .style("fill", function(d) { return self.colorScale(d.y); })
     .on("mouseenter", function(){ self._selectCell(this); })
     .on("mouseover", function (d) { self._moveTooltip(this, d); })
     .on("mouseout", function(){ self._deselectCell(this); });
+
+  var newDays = this.chart.selectAll('rect.new-day')[0].map( function(element, i){
+    return d3.select(element).attr("data-day");
+  });
 
   this.chart.on("mouseout", function () {
         self._hideTooltip();
@@ -371,4 +385,8 @@ BuildingHeatmapChart.prototype._selectCell = function (cell) {
 
 BuildingHeatmapChart.prototype._deselectCell = function (cell) {
   d3.select(cell).classed("cell-hover", false);
+};
+
+BuildingHeatmapChart.prototype._computeDayLabels = function(data) {
+
 };
