@@ -27,3 +27,12 @@ $( "#dew-point" ).click(function() {
 $( "#equilibrium-moisture-content" ).click(function() {
     chart.renderData(CHART_TYPE.EQUILIBRIUM_MOISTURE_CONTENT);
 });
+
+
+$( "#forward" ).click(function() {
+  chart.scanForward();
+});
+
+$( "#backward" ).click(function() {
+  chart.scanBackward();
+});
