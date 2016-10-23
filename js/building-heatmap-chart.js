@@ -25,6 +25,8 @@ function BuildingHeatmapChart(element) {
   this.daysOffset = 7;
   this.times      = d3.range(24);
 
+  this.startDate  = null;
+  this.endDate    = null;
 
   //base graph
   this.container  = null;
@@ -87,7 +89,10 @@ BuildingHeatmapChart.prototype.initData = function (data) {
     .key(function(d) { return d.date; })
     .entries(formattedReadings);
 
-  this.selectedDate = d3.max(this.readings, function(d) { return d.key; });
+  var dateRange = d3.extent(this.readings, function(d) { return d.key; });
+  this.startDate = dateRange[0];
+  this.endDate   = dateRange[1];
+  this.selectedDate = dateRange[1];
 
   this.colorScale = d3.scale.linear().range(this.colorRange);
 
@@ -202,7 +207,7 @@ BuildingHeatmapChart.prototype.render = function (event) {
     .attr("y", function (d, i) { return i * self.gridSize; })
     .style("text-anchor", "end")
     .attr("transform", "translate(-6," + self.gridSize / 1.5 + ")")
-    .attr("class", function (d, i) { return ((i >= 0 && i <= 4) ? "dayLabel mono axis axis-workweek" : "dayLabel mono axis"); });
+    .attr("class", function (d) { return ((d == "Sun" || d == "Sat") ? "dayLabel mono axis" : "dayLabel mono axis axis-workweek"); });
 
   this.timeLabels
     .text(function(d) { return d; })
@@ -217,13 +222,7 @@ BuildingHeatmapChart.prototype.render = function (event) {
       return (d.hour) * self.gridSize;
     })
     .attr("y", function(d) {
-      var initialDay = self._fromDate();
-      var subjectDay = moment(d.date);
-
-      var duration = moment.duration(subjectDay.diff(initialDay));
-      var multiplier = duration.days() - 1;
-
-      return multiplier * self.gridSize;
+      return self._computeCellY(d);
     })
     .attr("class", "hour bordered")
     .attr("width", self.gridSize - 1)
@@ -345,7 +344,7 @@ BuildingHeatmapChart.prototype._showTooltip = function () {
 
 BuildingHeatmapChart.prototype._moveTooltip = function (event, d) {
   this.tooltipKey.html(this.niceTimeFormat(d.date_time));
-  this.tooltipValue.html(d[self.y] + this.selectedType.suffix);
+  this.tooltipValue.html(d[this.y] + this.selectedType.suffix);
 
   var coords = d3.mouse(this.chart.node());
 
@@ -353,7 +352,7 @@ BuildingHeatmapChart.prototype._moveTooltip = function (event, d) {
   var dim = this.tooltip.node().getBoundingClientRect();
 
   //update the position of the tooltip
-  var tooltipTop = (d.day - 1) * this.gridSize + (dim.height / 2),
+  var tooltipTop = this._computeCellY(d) + (dim.height / 2),
       tooltipLeft = (d.hour * this.gridSize) + (dim.width / 2);
 
   //if right edge of tooltip goes beyond chart container, force it to move to the left of the mouse cursor
@@ -397,4 +396,36 @@ BuildingHeatmapChart.prototype._filterByDate = function(d){
 
 BuildingHeatmapChart.prototype._fromDate = function(){
   return moment(this.selectedDate).subtract(this.daysOffset, 'days');
+};
+
+BuildingHeatmapChart.prototype._computeCellY = function(d){
+  var initialDay = this._fromDate();
+  var subjectDay = moment(d.date);
+
+  var duration = moment.duration(subjectDay.diff(initialDay));
+  var multiplier = duration.days() - 1;
+
+  return multiplier * this.gridSize;
+};
+
+BuildingHeatmapChart.prototype.canScanForward = function(){
+  return moment(this.selectedDate).isBefore(this.endDate);
+};
+
+BuildingHeatmapChart.prototype.canScanBackward = function(){
+  return moment(this._fromDate()).isAfter(this.startDate);
+};
+
+BuildingHeatmapChart.prototype.scanForward = function(){
+  if(this.canScanForward()){
+    this.selectedDate = moment(this.selectedDate).add(1, 'days').format('Y-MM-DD');
+    this.renderData(this.selectedType);
+  }
+};
+
+BuildingHeatmapChart.prototype.scanBackward = function(){
+  if(this.canScanBackward()){
+    this.selectedDate = moment(this.selectedDate).subtract(1, 'days').format('Y-MM-DD');
+    this.renderData(this.selectedType);
+  }
 };
