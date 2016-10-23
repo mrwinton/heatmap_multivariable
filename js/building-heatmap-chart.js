@@ -303,22 +303,18 @@ BuildingHeatmapChart.prototype._updateDimensions = function (newWidth) {
 
 BuildingHeatmapChart.prototype._selectDataType = function (dataType) {
   if (dataType === CHART_TYPE.TEMPERATURE) {
-    this.selectedReadings = this.tagTemperatureReadings;
     this.selectedTypeDefaultDomain = this.defaultTemperatureDomain;
     this.y = "temperature";
 
   } else if (dataType === CHART_TYPE.RELATIVE_HUMIDITY) {
-    this.selectedReadings = this.tagRelativeHumidityReadings;
     this.selectedTypeDefaultDomain = this.defaultRelativeHumidityDomain;
     this.y = "relativeHumidity";
 
   } else if (dataType === CHART_TYPE.DEW_POINT) {
-    this.selectedReadings = this.tagDewPointReadings;
     this.selectedTypeDefaultDomain = this.defaultDewPointDomain;
     this.y = "dewPoint";
 
   } else if (dataType === CHART_TYPE.EQUILIBRIUM_MOISTURE_CONTENT) {
-    this.selectedReadings = this.tagEquilibriumMoistureContentReadings;
     this.selectedTypeDefaultDomain = this.defaultEquilibriumMoistureContentDomain;
     this.y = "equilibriumMoistureContent";
 
@@ -353,7 +349,7 @@ BuildingHeatmapChart.prototype._moveTooltip = function (event, d) {
 
   //update the position of the tooltip
   var tooltipTop = this._computeCellY(d) + (dim.height / 2),
-      tooltipLeft = (d.hour * this.gridSize) + (dim.width / 2);
+  tooltipLeft = (d.hour * this.gridSize) + (dim.width / 2);
 
   //if right edge of tooltip goes beyond chart container, force it to move to the left of the mouse cursor
   if (tooltipLeft + (dim.width / 2) > this.width) {
