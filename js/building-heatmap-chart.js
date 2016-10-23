@@ -9,10 +9,7 @@ function BuildingHeatmapChart(element) {
 
   //data
   this.data = null;
-  this.tagTemperatureReadings       = [];
-  this.tagRelativeHumidityReadings  = [];
-  this.tagDewPointReadings          = [];
-  this.tagEquilibriumMoistureContentReadings = [];
+  this.readings = [];
 
   this.defaultTemperatureDomain      = [-10, 40];
   this.defaultRelativeHumidityDomain = [0, 100];
@@ -22,6 +19,12 @@ function BuildingHeatmapChart(element) {
   this.selectedReadings = [];
   this.selectedType     = null;
   this.selectedTypeDefaultDomain   = [];
+  this.y = null;
+
+  this.selectedDate = null;
+  this.daysOffset = 7;
+  this.times      = d3.range(24);
+
 
   //base graph
   this.container  = null;
@@ -38,16 +41,14 @@ function BuildingHeatmapChart(element) {
   this.dayLabelArea   = null;
 
   //time formats
-  this.timeFormat     = d3.time.format('%Y-%m-%d %H:%M:%S');
+  this.dateTimeFormat = d3.time.format('%Y-%m-%d %H:%M:%S');
+  this.dateFormat     = d3.time.format('%Y-%m-%d');
   this.niceTimeFormat = d3.time.format('%a %e, %b %_I:%M%p');
   this.hourFormat     = d3.time.format('%H');
   this.dayFormat      = d3.time.format('%e');
   this.niceDayFormat  = d3.time.format('%a');
 
-  this.days   = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
-  this.times  = d3.range(24);
-
-  //heatmap
+    //heatmap
   this.colorScale = null;
   this.colorRange = ["#91cf60", "#ffffbf", "#fc8d59"];
   this.dayLabels  = null;
@@ -67,44 +68,26 @@ BuildingHeatmapChart.prototype.initData = function (data) {
   var self = this;
   this.data = data;
 
-  this.data.tagLogs.forEach(function (tagLog) {
-    var reading_date = self.timeFormat.parse(tagLog.readingAt);
+  var formattedReadings = this.data.tagLogs.map(function (tagLog) {
+    var reading_date_time = self.dateTimeFormat.parse(tagLog.readingAt);
 
-    self.tagTemperatureReadings.push(
-      {
-        date: reading_date,
-        day: self.dayFormat(reading_date),
-        day_abbr: self.niceDayFormat(reading_date),
-        hour: self.hourFormat(reading_date),
-        y: tagLog.temperature
-      });
-
-    self.tagRelativeHumidityReadings.push({
-        date: reading_date,
-        day: self.dayFormat(reading_date),
-        day_abbr: self.niceDayFormat(reading_date),
-        hour: self.hourFormat(reading_date),
-        y: tagLog.relativeHumidity
-      });
-
-    self.tagDewPointReadings.push(
-      {
-        date: reading_date,
-        day: self.dayFormat(reading_date),
-        day_abbr: self.niceDayFormat(reading_date),
-        hour: self.hourFormat(reading_date),
-        y: tagLog.dewPoint
-      });
-
-    self.tagEquilibriumMoistureContentReadings.push(
-      {
-        date: reading_date,
-        day: self.dayFormat(reading_date),
-        day_abbr: self.niceDayFormat(reading_date),
-        hour: self.hourFormat(reading_date),
-        y: tagLog.equilibriumMoistureContent
-      });
+    return {
+      date_time: reading_date_time,
+      date: self.dateFormat(reading_date_time),
+      day: self.dayFormat(reading_date_time),
+      hour: self.hourFormat(reading_date_time),
+      temperature: tagLog.temperature,
+      relativeHumidity: tagLog.relativeHumidity,
+      dewPoint: tagLog.dewPoint,
+      equilibriumMoistureContent: tagLog.equilibriumMoistureContent
+    };
   });
+
+  this.readings = d3.nest()
+    .key(function(d) { return d.date; })
+    .entries(formattedReadings);
+
+  this.selectedDate = d3.max(this.readings, function(d) { return d.key; });
 
   this.colorScale = d3.scale.linear().range(this.colorRange);
 
@@ -188,7 +171,7 @@ BuildingHeatmapChart.prototype.render = function (event) {
 
   this.colorScale.domain(colorDomain).clamp(true);
 
-  var readingValuesExtent = d3.extent(this.selectedReadings, function(d) {return d.y; });
+  var readingValuesExtent = d3.extent(this.selectedReadings, function(d) {return d[self.y]; });
   var readingDomain = d3.extent(this.selectedTypeDefaultDomain.concat(readingValuesExtent));
 
   this.countScale
@@ -202,7 +185,7 @@ BuildingHeatmapChart.prototype.render = function (event) {
   countPoint    = [];
   for(var i = 0; i < numStops; i++) {
     countPoint.push(i * countRange[2]/(numStops-1) + countRange[0]);
-  }//for i
+  }
 
   //update svg elements to new dimensions
   this.svg.attr('width', this.width + this.margin.left + this.margin.right)
@@ -213,13 +196,13 @@ BuildingHeatmapChart.prototype.render = function (event) {
     height: this.days.length * this.gridSize
   });
 
-  // this.dayLabels
-  //   .text(function (d) { return d; })
-  //   .attr("x", 0)
-  //   .attr("y", function (d, i) { return i * self.gridSize; })
-  //   .style("text-anchor", "end")
-  //   .attr("transform", "translate(-6," + self.gridSize / 1.5 + ")")
-  //   .attr("class", function (d, i) { return ((i >= 0 && i <= 4) ? "dayLabel mono axis axis-workweek" : "dayLabel mono axis"); });
+  this.dayLabels
+    .text(function (d) { return d; })
+    .attr("x", 0)
+    .attr("y", function (d, i) { return i * self.gridSize; })
+    .style("text-anchor", "end")
+    .attr("transform", "translate(-6," + self.gridSize / 1.5 + ")")
+    .attr("class", function (d, i) { return ((i >= 0 && i <= 4) ? "dayLabel mono axis axis-workweek" : "dayLabel mono axis"); });
 
   this.timeLabels
     .text(function(d) { return d; })
@@ -234,24 +217,21 @@ BuildingHeatmapChart.prototype.render = function (event) {
       return (d.hour) * self.gridSize;
     })
     .attr("y", function(d) {
-      return (d.day - 1) * self.gridSize;
+      var initialDay = self._fromDate();
+      var subjectDay = moment(d.date);
+
+      var duration = moment.duration(subjectDay.diff(initialDay));
+      var multiplier = duration.days() - 1;
+
+      return multiplier * self.gridSize;
     })
-    .attr("class", function(d) {
-      return d.hour * self.gridSize == 0 ? "hour bordered new-day" : "hour bordered";
-    })
-    .attr("data-day", function(d) {
-      return d.day_abbr;
-    })
+    .attr("class", "hour bordered")
     .attr("width", self.gridSize - 1)
     .attr("height", self.gridSize - 1)
-    .style("fill", function(d) { return self.colorScale(d.y); })
+    .style("fill", function(d) { return self.colorScale(d[self.y]); })
     .on("mouseenter", function(){ self._selectCell(this); })
     .on("mouseover", function (d) { self._moveTooltip(this, d); })
     .on("mouseout", function(){ self._deselectCell(this); });
-
-  var newDays = this.chart.selectAll('rect.new-day')[0].map( function(element, i){
-    return d3.select(element).attr("data-day");
-  });
 
   this.chart.on("mouseout", function () {
         self._hideTooltip();
@@ -326,24 +306,36 @@ BuildingHeatmapChart.prototype._selectDataType = function (dataType) {
   if (dataType === CHART_TYPE.TEMPERATURE) {
     this.selectedReadings = this.tagTemperatureReadings;
     this.selectedTypeDefaultDomain = this.defaultTemperatureDomain;
+    this.y = "temperature";
 
   } else if (dataType === CHART_TYPE.RELATIVE_HUMIDITY) {
     this.selectedReadings = this.tagRelativeHumidityReadings;
     this.selectedTypeDefaultDomain = this.defaultRelativeHumidityDomain;
+    this.y = "relativeHumidity";
 
   } else if (dataType === CHART_TYPE.DEW_POINT) {
     this.selectedReadings = this.tagDewPointReadings;
     this.selectedTypeDefaultDomain = this.defaultDewPointDomain;
+    this.y = "dewPoint";
 
   } else if (dataType === CHART_TYPE.EQUILIBRIUM_MOISTURE_CONTENT) {
     this.selectedReadings = this.tagEquilibriumMoistureContentReadings;
     this.selectedTypeDefaultDomain = this.defaultEquilibriumMoistureContentDomain;
+    this.y = "equilibriumMoistureContent";
 
   } else {
     console.log(dataType + " not recognised.");
     return;
   }
 
+  var self = this;
+  var keyedSelectedDateReadings = this.readings.filter(function(d){ return self._filterByDate(d); });
+  var selectedDateReadings = _.map(keyedSelectedDateReadings, function(reading){
+    return reading.values;
+  });
+
+  this.days = this._computeDayLabels(keyedSelectedDateReadings);
+  this.selectedReadings = _.flatten(selectedDateReadings);
   this.selectedType = dataType;
 };
 
@@ -352,8 +344,8 @@ BuildingHeatmapChart.prototype._showTooltip = function () {
 };
 
 BuildingHeatmapChart.prototype._moveTooltip = function (event, d) {
-  this.tooltipKey.html(this.niceTimeFormat(d.date));
-  this.tooltipValue.html(d.y + this.selectedType.suffix);
+  this.tooltipKey.html(this.niceTimeFormat(d.date_time));
+  this.tooltipValue.html(d[self.y] + this.selectedType.suffix);
 
   var coords = d3.mouse(this.chart.node());
 
@@ -388,5 +380,21 @@ BuildingHeatmapChart.prototype._deselectCell = function (cell) {
 };
 
 BuildingHeatmapChart.prototype._computeDayLabels = function(data) {
+  var self = this;
+  return _.map(data, function(d){
+    var date = self.dateFormat.parse(d.key);
+    return self.niceDayFormat(date);
+  });
+};
 
+BuildingHeatmapChart.prototype._filterByDate = function(d){
+  var fromDate = this._fromDate();
+  var toDate = this.selectedDate;
+
+  var subjectDate = d.key;
+  return moment(subjectDate).isBetween(fromDate, toDate, null, '(]');
+};
+
+BuildingHeatmapChart.prototype._fromDate = function(){
+  return moment(this.selectedDate).subtract(this.daysOffset, 'days');
 };
