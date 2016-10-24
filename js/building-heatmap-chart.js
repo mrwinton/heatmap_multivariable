@@ -24,6 +24,7 @@ function BuildingHeatmapChart(element) {
   this.selectedDate = null;
   this.daysOffset = 7;
   this.times      = d3.range(24);
+  this.days       = null;
 
   this.startDate  = null;
   this.endDate    = null;
@@ -101,6 +102,7 @@ BuildingHeatmapChart.prototype.initData = function (data) {
   this.xAxis      = d3.svg.axis();
 
   this._selectDataType(CHART_TYPE.EQUILIBRIUM_MOISTURE_CONTENT);
+  this._updateSelectedData();
 };
 
 BuildingHeatmapChart.prototype.initChart = function () {
@@ -287,7 +289,7 @@ BuildingHeatmapChart.prototype.render = function (event) {
 
 BuildingHeatmapChart.prototype.renderData = function (dataType) {
   this._selectDataType(dataType);
-  this.render(null);
+   this.render(null);
 };
 
 BuildingHeatmapChart.prototype._updateDimensions = function (newWidth) {
@@ -323,14 +325,6 @@ BuildingHeatmapChart.prototype._selectDataType = function (dataType) {
     return;
   }
 
-  var self = this;
-  var keyedSelectedDateReadings = this.readings.filter(function(d){ return self._filterByDate(d); });
-  var selectedDateReadings = _.map(keyedSelectedDateReadings, function(reading){
-    return reading.values;
-  });
-
-  this.days = this._computeDayLabels(keyedSelectedDateReadings);
-  this.selectedReadings = _.flatten(selectedDateReadings);
   this.selectedType = dataType;
 };
 
@@ -349,7 +343,7 @@ BuildingHeatmapChart.prototype._moveTooltip = function (event, d) {
 
   //update the position of the tooltip
   var tooltipTop = this._computeCellY(d) + (dim.height / 2),
-  tooltipLeft = (d.hour * this.gridSize) + (dim.width / 2);
+      tooltipLeft = (d.hour * this.gridSize) + (dim.width / 2);
 
   //if right edge of tooltip goes beyond chart container, force it to move to the left of the mouse cursor
   if (tooltipLeft + (dim.width / 2) > this.width) {
@@ -415,13 +409,33 @@ BuildingHeatmapChart.prototype.canScanBackward = function(){
 BuildingHeatmapChart.prototype.scanForward = function(){
   if(this.canScanForward()){
     this.selectedDate = moment(this.selectedDate).add(1, 'days').format('Y-MM-DD');
-    this.renderData(this.selectedType);
+    this._updateSelectedData();
+    this._updateRenderedData();
+    this.render();
   }
 };
 
 BuildingHeatmapChart.prototype.scanBackward = function(){
   if(this.canScanBackward()){
     this.selectedDate = moment(this.selectedDate).subtract(1, 'days').format('Y-MM-DD');
-    this.renderData(this.selectedType);
+    this._updateSelectedData();
+    this._updateRenderedData();
+    this.render();
   }
+};
+
+BuildingHeatmapChart.prototype._updateSelectedData = function(){
+  var self = this;
+  var keyedSelectedDateReadings = this.readings.filter(function(d){ return self._filterByDate(d); });
+  this.days = this._computeDayLabels(keyedSelectedDateReadings);
+
+  var selectedDateReadings = _.map(keyedSelectedDateReadings, function(reading){
+    return reading.values;
+  });
+  this.selectedReadings = _.flatten(selectedDateReadings);
+};
+
+BuildingHeatmapChart.prototype._updateRenderedData = function(){
+  this.dayLabels.data(this.days);
+  this.heatMap.data(this.selectedReadings);
 };
