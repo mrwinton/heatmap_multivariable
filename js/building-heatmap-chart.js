@@ -1,8 +1,3 @@
-// TODO
-// default ranges
-// C is -10 to 40
-// % is 0 to 100
-
 function BuildingHeatmapChart(element) {
   //root element
   this.element = element;
@@ -12,7 +7,7 @@ function BuildingHeatmapChart(element) {
   this.readings = [];
 
   this.defaultTemperatureDomain      = [-10, 40];
-  this.defaultRelativeHumidityDomain = [0, 100];
+  this.defaultRelativeHumidityDomain = [90, 100];
   this.defaultDewPointDomain         = [-10, 40];
   this.defaultEquilibriumMoistureContentDomain = [15, 20];
 
@@ -72,13 +67,13 @@ BuildingHeatmapChart.prototype.initData = function (data) {
   this.data = data;
 
   var formattedReadings = this.data.tagLogs.map(function (tagLog) {
-    var reading_date_time = self.dateTimeFormat.parse(tagLog.readingAt);
+    var readingDateTime = self.dateTimeFormat.parse(tagLog.readingAt);
 
     return {
-      date_time: reading_date_time,
-      date: self.dateFormat(reading_date_time),
-      day: self.dayFormat(reading_date_time),
-      hour: self.hourFormat(reading_date_time),
+      dateTime: readingDateTime,
+      date: self.dateFormat(readingDateTime),
+      day: self.dayFormat(readingDateTime),
+      hour: self.hourFormat(readingDateTime),
       temperature: tagLog.temperature,
       relativeHumidity: tagLog.relativeHumidity,
       dewPoint: tagLog.dewPoint,
@@ -333,7 +328,7 @@ BuildingHeatmapChart.prototype._showTooltip = function () {
 };
 
 BuildingHeatmapChart.prototype._moveTooltip = function (event, d) {
-  this.tooltipKey.html(this.niceTimeFormat(d.date_time));
+  this.tooltipKey.html(this.niceTimeFormat(d.dateTime));
   this.tooltipValue.html(d[this.y] + this.selectedType.suffix);
 
   var coords = d3.mouse(this.chart.node());
